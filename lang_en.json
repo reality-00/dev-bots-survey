@@ -1,0 +1,6 @@
+{
+  "OFFICIAL_SURVEY": {
+    "API_ERR_500": "I'm sorry, please ask again later.",
+    "API_ERR_400": "I'm sorry, please reboot the <sub alias='phybo'>pi·bo</sub>."
+  }
+}
