@@ -10,11 +10,36 @@ const moment = require('moment');
 const ko = require('./lang_ko.json');
 const en = require('./lang_en.json');
 const A = require('./ext_answer.json');
+
+// 타이틀 번호
 let tNum = 0;
+
+// 타이틀 안의 문제 번호
 let qNum = 0;
+
+// 질문 시간인지 답을 받는 부분인지 체크
+let isQuestionTime = true;
+
+// 카드를 잘못 보여줬는지 체크
 let cardErr = false;
+
+// 마지막 질문했던 시간
 let lastQuestionTime = undefined;
-let continueCheck = false;
+
+// 문제가 끝나지 않고 시간이 흐름
+let aLotOfTimeNoEnd = false;
+
+// 문제가 끝나지 않고 다시 질문 함
+let anotherQuestionWhenNoEnd = false;
+
+// 멘트
+let sayIntro = undefined;
+let sayFinished = undefined;
+let sayErr = undefined;
+let questions = undefined;
+
+// 대답 저장 장소
+const answer = A.dementia.A;
 
 exports.bot = async (param, api) => {
   const lang = api.config.get('language');
@@ -50,30 +75,52 @@ exports.bot = async (param, api) => {
 
   const token = param.state.keywords['noun'];
 
-  console.time('i18next');
-  M.init({
-    resources: {
-      en: {
-        bot: en.OFFICIAL_SURVEY,
+  // 정보
+  if (qNum === 0) {
+    logger.info(
+      moduleNm,
+      `$ beginTime : ${moment().format('YYYY-MM-DDTHH:mm:ss.SSS')}`,
+    );
+    logger.info(moduleNm, `! param.token : ${JSON.stringify(token)}`);
+    logger.info(moduleNm, `! param.text : ${piboInpuText}`);
+    logger.info(moduleNm, `! param.cmd : ${cmd}`);
+  } else {
+    logger.info(moduleNm, `! survey in progress ...................`);
+  }
+
+  // 초기 설정
+  if (!lastQuestionTime) {
+    console.time('i18next');
+    M.init({
+      resources: {
+        en: {
+          bot: en.OFFICIAL_SURVEY,
+        },
+        ko: {
+          bot: ko.OFFICIAL_SURVEY,
+        },
       },
-      ko: {
-        bot: ko.OFFICIAL_SURVEY,
+      lng: lang,
+      fallbackLng: lang,
+      debug: false,
+      ns: ['bot'],
+      defaultNS: 'bot',
+      interpolation: {
+        escapeValue: false,
       },
-    },
-    lng: lang,
-    fallbackLng: lang,
-    debug: false,
-    ns: ['bot'],
-    defaultNS: 'bot',
-    interpolation: {
-      escapeValue: false,
-    },
-    returnObjects: true,
-    returnedObjectHandler: true,
-    joinArrays: true,
-    keySeparator: true,
-  });
-  console.timeEnd('i18next');
+      returnObjects: true,
+      returnedObjectHandler: true,
+      joinArrays: true,
+      keySeparator: true,
+    });
+    console.timeEnd('i18next');
+
+    const QD = M.t('DEMENTIA', { nickName: userNickName });
+    sayIntro = QD.I;
+    sayFinished = QD.F;
+    sayErr = QD.E;
+    questions = QD.Q;
+  }
 
   const I = {
     // 기본
@@ -98,48 +145,68 @@ exports.bot = async (param, api) => {
     // api
     capi: url,
     basicHeaders: basicHeaders,
-    streamHeaders: streamHeaders,
 
     // getData
     getApiData: F.getGetData,
     clearText: F.clearText,
   };
 
+  // 명령어가 들어오면 타이틀 분기 시키기
   if (piboInpuText.includes('우울')) {
     tNum = 0;
+    checkContinue();
   } else if (piboInpuText.includes('삶') || piboInpuText.includes('살')) {
     tNum = 1;
+    checkContinue();
   } else if (piboInpuText.includes('사회')) {
     tNum = 2;
+    checkContinue();
   } else if (piboInpuText.includes('재화')) {
     tNum = 3;
+    checkContinue();
   }
 
-  const QD = M.t('DEMENTIA', { nickName: userNickName });
-  const intros = QD.I;
-  const finished = QD.F;
-  const err = QD.E;
-  const questions = QD.Q;
-  const answer = A.dementia.A;
-  const arrOfAnswerAboutQuestion = Object.keys(QD.QA[tNum]);
-  const qTitleLength = questions.length;
-  const qLength = Object.keys(questions[tNum]).length;
-
-  // 봇 정보
-  if (tNum === 0 && qNum === 0) {
-    logger.info(
-      moduleNm,
-      `$ beginTime : ${moment().format('YYYY-MM-DDTHH:mm:ss.SSS')}`,
-    );
-    logger.info(moduleNm, `! param.token : ${JSON.stringify(token)}`);
-    logger.info(moduleNm, `! param.text : ${piboInpuText}`);
-    logger.info(moduleNm, `! param.cmd : ${cmd}`);
-  } else {
-    logger.info(moduleNm, `! survey in progress ...................`);
-  }
-
+  // 현재 정보
+  logger.info(
+    moduleNm,
+    `$ current : ${isQuestionTime ? 'Question' : 'Answer'}`,
+  );
   logger.info(moduleNm, `$ title num : ${tNum},  question num : ${qNum}`);
   logger.info(moduleNm, `$ answer : ${stateValue}`);
+
+  const arrOfAnswerAboutQuestion = Object.keys(QD.QA[tNum]);
+  const qLength = Object.keys(questions[tNum]).length;
+
+  // 인트로 - ~시작 + 카드 설명
+
+  // 인트로 - 카드 설명
+
+  // 인트로 - 이어서 시작
+
+  // 질문 - 질문
+
+  // 끝 - 딥
+
+  // 끝 - 답 + 설문이 종료
+
+  // 끝 - 이어서 시작 관련 답 + 처음 부터 시작 or 이어서 시작
+
+  // 질문을 하고 설문을 마치지 않았을 때,
+  const currentTime = moment();
+  let diff = currentTime.diff(lastQuestionTime, 'minute');
+
+  console.log('!!!!!!!!!!!!!!! lastQuestionTime', lastQuestionTime);
+  console.log('!!!!!!!!!!!!!!! diff', diff);
+  console.log('!!!!!!!!!!!!!!! tNum', tNum);
+  console.log('!!!!!!!!!!!!!!! qNum', qNum);
+  console.log('!!!!!!!!!!!!!!! aLotOfTimeNoEnd', aLotOfTimeNoEnd);
+
+  const checkContinue = () => {
+    if (qNum !== 0) {
+      anotherQuestionWhenNoEnd = true;
+      callOneself();
+    }
+  };
 
   const numInit = () => {
     tNum = 0;
@@ -147,113 +214,11 @@ exports.bot = async (param, api) => {
     lastQuestionTime = undefined;
   };
 
-  const sayTheIntro = (i) => {
-    return new Promise(function (resolve, reject) {
-      const { t } = i;
-      F.piboTell(I, intros[t]);
-      resolve(i);
-    });
-  };
-
-  const sayTheErrCard = (i) => {
-    return new Promise(function (resolve, reject) {
-      F.piboTell(I, err['CARD_ERR']);
-      resolve(i);
-    });
-  };
-
-  const sayTheExplainCard = (i) => {
-    return new Promise(function (resolve, reject) {
-      const { t } = i;
-      F.piboTell(I, intros[`${t}-1`]);
-      resolve(i);
-    });
-  };
-
-  const sayTheStopAndContinue = (i) => {
-    return new Promise(function (resolve, reject) {
-      F.piboTell(I, intros['CHOICE_STOP_AND_CONTINUE']);
-      resolve(i);
-    });
-  };
-
-  const sayTheStopAndContinueExplainCard = (i) => {
-    return new Promise(function (resolve, reject) {
-      F.piboTell(I, intros['CHOICE_STOP_AND_CONTINUE-1']);
-      resolve(i);
-    });
-  };
-
-  const sayTheContinue = (i) => {
-    return new Promise(function (resolve, reject) {
-      F.piboTell(I, intros['CONTINUE']);
-      resolve(i);
-    });
-  };
-
-  const sayTheStop = (i) => {
-    return new Promise(function (resolve, reject) {
-      F.piboTell(I, intros['STOP']);
-      numInit();
-      resolve(i);
-    });
-  };
-
-  const sayTheQuestion = (i) => {
-    return new Promise(function (resolve, reject) {
-      const { t, QKey } = i;
-      F.piboTell(I, questions[t][QKey]);
-      resolve(i);
-    });
-  };
-
-  const sayTheAnswer = (i) => {
-    return new Promise(function (resolve, reject) {
-      const { t, v } = i;
-      F.piboTell(I, finished['ANSWER'].replace('{answer}', QD.QA[t][v]));
-      resolve(i);
-    });
-  };
-
-  const sayTheFinish = (i) => {
-    return new Promise(function (resolve, reject) {
-      F.piboTell(I, finished['FINISH']);
-      resolve(i);
-    });
-  };
-
-  const searchQR = (i) => {
-    return new Promise(async function (resolve, reject) {
-      await api.pibo.qrsearch();
-      resolve(i);
-    });
-  };
-
-  const callOneself = (i) => {
-    return new Promise(async function (resolve, reject) {
-      api.bot('OFFICIAL_SURVEY');
-      resolve(i);
-    });
-  };
-
-  const report = (i) => {
-    return new Promise(function (resolve, reject) {
-      console.log('result : ', Object.values(answer[tNum]));
-      numInit();
-      resolve(i);
-    });
-  };
-
-  const addTNum = () => {
-    ++tNum;
-  };
-
   const addQNum = (i) => {
     return new Promise(function (resolve, reject) {
       ++qNum;
 
       if (qNum === qLength) {
-        addTNum();
         qNum = 0;
       }
 
@@ -265,7 +230,10 @@ exports.bot = async (param, api) => {
 
   const saveAnswer = (tNum, qNum, value) => {
     const AKey = `${tNum}-${qNum}-A`;
-    answer[AKey] = value;
+
+    console.log('TTNum', tNum, 'QQNum', qNum, 'VVValue', value);
+
+    answer[tNum][AKey] = value;
   };
 
   const askQuestion = (tNum, qNum) => {
@@ -307,40 +275,29 @@ exports.bot = async (param, api) => {
     }
   };
 
-  const currentTime = moment();
-  const diff = currentTime.diff(lastQuestionTime, 'minute');
-
-  // 질문을 하고 설문을 마치지 않았을 때,
-
-  console.log('!!!!!!!!!!!!!!! lastQuestionTime', lastQuestionTime);
-  console.log('!!!!!!!!!!!!!!! diff', diff);
-  console.log('!!!!!!!!!!!!!!! tNum', tNum);
-  console.log('!!!!!!!!!!!!!!! qNum', qNum);
-  console.log('!!!!!!!!!!!!!!! continueCheck', continueCheck);
-
   if (
     lastQuestionTime &&
-    diff > 4 &&
-    !continueCheck &&
-    (tNum !== 0 || qNum !== 0)
+    (diff > 4 || anotherQuestionWhenNoEnd) &&
+    !aLotOfTimeNoEnd &&
+    qNum !== 0
   ) {
-    continueCheck = true;
+    aLotOfTimeNoEnd = true;
     sayTheStopAndContinue()
       .then(sayTheStopAndContinueExplainCard)
       .then(searchQR);
   } else {
     // 이전 질문에 이어서 진행할 것인지, 아닌지에 관한 답변
-    if (continueCheck) {
+    if (aLotOfTimeNoEnd) {
       if (stateValue) {
         const info = { t: tNum, q: qNum };
         if (stateValue === 'O') {
-          continueCheck = false;
+          aLotOfTimeNoEnd = false;
           lastQuestionTime = undefined;
           sayTheContinue(info).then(sayTheExplainCard).then(callOneself);
         } else if (stateValue === 'X') {
-          continueCheck = false;
+          aLotOfTimeNoEnd = false;
           lastQuestionTime = undefined;
-          numInit();
+          qNum = 0;
           sayTheStop().then(callOneself);
         } else {
           sayTheErrCard().then(sayTheStopAndContinueExplainCard).then(searchQR);
