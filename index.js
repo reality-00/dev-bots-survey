@@ -105,6 +105,16 @@ exports.bot = async (param, api) => {
     clearText: F.clearText,
   };
 
+  if (piboInpuText.includes('우울')) {
+    tNum = 0;
+  } else if (piboInpuText.includes('삶') || piboInpuText.includes('살')) {
+    tNum = 1;
+  } else if (piboInpuText.includes('사회')) {
+    tNum = 2;
+  } else if (piboInpuText.includes('재화')) {
+    tNum = 3;
+  }
+
   const QD = M.t('DEMENTIA', { nickName: userNickName });
   const intros = QD.I;
   const finished = QD.F;
@@ -205,16 +215,6 @@ exports.bot = async (param, api) => {
     });
   };
 
-  const sayTheEndOfTitle = (i) => {
-    return new Promise(function (resolve, reject) {
-      const { q } = i;
-      if (q === 0) {
-        F.piboTell(I, finished['CONTENT_END']);
-      }
-      resolve(i);
-    });
-  };
-
   const sayTheFinish = (i) => {
     return new Promise(function (resolve, reject) {
       F.piboTell(I, finished['FINISH']);
@@ -238,7 +238,8 @@ exports.bot = async (param, api) => {
 
   const report = (i) => {
     return new Promise(function (resolve, reject) {
-      console.log('result : ', Object.values(answer));
+      console.log('result : ', Object.values(answer[tNum]));
+      numInit();
       resolve(i);
     });
   };
@@ -287,11 +288,10 @@ exports.bot = async (param, api) => {
   };
 
   const endding = (i) => {
-    if (i.t === qTitleLength - 1 && i.q === 0) {
-      numInit();
+    if (i.q === 0) {
       return sayTheFinish().then(report);
     } else {
-      return sayTheEndOfTitle(i).then(callOneself);
+      return callOneself();
     }
   };
 
